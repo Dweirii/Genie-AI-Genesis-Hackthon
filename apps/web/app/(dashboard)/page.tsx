@@ -13,7 +13,6 @@ export default function Page() {
       <Authenticated>
         <div className="flex items-center  flex-col justify-center min-h-svh">
             <h1 className="text-2xl font-bold">Hello World apps</h1>
-            {JSON.stringify(users)}
             <Button
               onClick={() => addUser()}
             >

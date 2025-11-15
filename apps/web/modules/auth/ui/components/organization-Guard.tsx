@@ -1,3 +1,4 @@
+"use client";
 import { useOrganization } from "@clerk/nextjs"
 import { OrgSelectView } from "./select-org-view";
 import { AuthLayout } from "../layouts/auth-layout";

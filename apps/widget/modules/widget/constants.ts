@@ -1,12 +1,12 @@
 export const WIDGET_SCREENS = [
-    "error",
-    "loading",
-    "voice",
-    "auth",
-    "selection",
-    "chat",
-    "inbox",
-    "contact",
+  "error",
+  "loading",
+  "selection",
+  "voice",
+  "auth",
+  "inbox",
+  "chat",
+  "contact",
 ] as const;
 
-export const CONTACT_SESSION_KEY = "genie_contact_session";
+export const CONTACT_SESSION_KEY = "echo_contact_session";

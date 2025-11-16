@@ -1,4 +1,9 @@
-import { AuthConfig } from "convex/server";
+type AuthConfig = {
+  providers: Array<{
+    domain: string;
+    applicationID: string;
+  }>;
+};
 
 export default {
   providers: [

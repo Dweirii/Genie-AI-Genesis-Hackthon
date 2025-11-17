@@ -55,55 +55,73 @@ export const WidgetSelectionScreen = () => {
 
   return (
     <>
-      <WidgetHeader>
-        <div className="flex flex-col justify-between gap-y-2 px-2 py-6 font-semibold">
+      <WidgetHeader className="shadow-sm">
+        <div className="flex flex-col justify-between gap-y-2 px-2 py-6 font-semibold animate-in fade-in-50 slide-in-from-top-4 duration-500">
           <p className="text-3xl">
             Hi there! 👋
           </p>
-          <p className="text-lg">
+          <p className="text-lg text-primary-foreground/90">
             Let&apos;s get you started
           </p>
         </div>
       </WidgetHeader>
-      <div className="flex flex-1 flex-col gap-y-4 p-4 overflow-y-auto">
+      <div className="flex flex-1 flex-col gap-y-3 p-4 overflow-y-auto">
         <Button
-          className="h-16 w-full justify-between"
+          className="h-16 w-full justify-between hover:shadow-md transition-all duration-200 animate-in fade-in-50 slide-in-from-bottom-4"
           variant="outline"
           onClick={handleNewConversation}
           disabled={isPending}
+          style={{ animationDelay: "100ms" }}
         >
-          <div className="flex items-center gap-x-2">
-            <MessageSquareTextIcon className="size-4" />
-            <span>Start chat</span>
+          <div className="flex items-center gap-x-3">
+            <div className="flex size-10 items-center justify-center rounded-full bg-primary/10">
+              <MessageSquareTextIcon className="size-5 text-primary" />
+            </div>
+            <div className="flex flex-col items-start">
+              <span className="font-medium">Start chat</span>
+              <span className="text-xs text-muted-foreground">Text conversation</span>
+            </div>
           </div>
-          <ChevronRightIcon />
+          <ChevronRightIcon className="size-5 text-muted-foreground" />
         </Button>
         {hasVapiSecrets && widgetSettings?.vapiSettings?.assistantId && (
           <Button
-            className="h-16 w-full justify-between"
+            className="h-16 w-full justify-between hover:shadow-md transition-all duration-200 animate-in fade-in-50 slide-in-from-bottom-4"
             variant="outline"
             onClick={() => setScreen("voice")}
             disabled={isPending}
+            style={{ animationDelay: "200ms" }}
           >
-            <div className="flex items-center gap-x-2">
-              <MicIcon className="size-4" />
-              <span>Start voice call</span>
+            <div className="flex items-center gap-x-3">
+              <div className="flex size-10 items-center justify-center rounded-full bg-primary/10">
+                <MicIcon className="size-5 text-primary" />
+              </div>
+              <div className="flex flex-col items-start">
+                <span className="font-medium">Start voice call</span>
+                <span className="text-xs text-muted-foreground">Voice conversation</span>
+              </div>
             </div>
-            <ChevronRightIcon />
+            <ChevronRightIcon className="size-5 text-muted-foreground" />
           </Button>
         )}
         {hasVapiSecrets && widgetSettings?.vapiSettings?.phoneNumber && (
           <Button
-            className="h-16 w-full justify-between"
+            className="h-16 w-full justify-between hover:shadow-md transition-all duration-200 animate-in fade-in-50 slide-in-from-bottom-4"
             variant="outline"
             onClick={() => setScreen("contact")}
             disabled={isPending}
+            style={{ animationDelay: "300ms" }}
           >
-            <div className="flex items-center gap-x-2">
-              <PhoneIcon className="size-4" />
-              <span>Call us</span>
+            <div className="flex items-center gap-x-3">
+              <div className="flex size-10 items-center justify-center rounded-full bg-primary/10">
+                <PhoneIcon className="size-5 text-primary" />
+              </div>
+              <div className="flex flex-col items-start">
+                <span className="font-medium">Call us</span>
+                <span className="text-xs text-muted-foreground">Phone support</span>
+              </div>
             </div>
-            <ChevronRightIcon />
+            <ChevronRightIcon className="size-5 text-muted-foreground" />
           </Button>
         )}
       </div>

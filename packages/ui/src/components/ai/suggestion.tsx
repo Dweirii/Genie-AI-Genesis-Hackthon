@@ -43,7 +43,11 @@ export const AISuggestion = ({
 
   return (
     <Button
-      className={cn("cursor-pointer rounded-full px-4", className)}
+      className={cn(
+        "cursor-pointer rounded-full px-4 shadow-sm hover:shadow-md transition-all duration-200",
+        "hover:scale-[1.02] active:scale-[0.98]",
+        className
+      )}
       onClick={handleClick}
       size={size}
       type="button"

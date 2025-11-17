@@ -33,6 +33,7 @@ import {
   AIMessageContent,
 } from "@workspace/ui/components/ai/message";
 import { AIResponse } from "@workspace/ui/components/ai/response";
+import { AIActivityIndicator } from "@workspace/ui/components/ai/activity-indicator";
 import { useMemo } from "react";
 
 const formSchema = z.object({
@@ -118,22 +119,29 @@ export const WidgetChatScreen = () => {
 
   return (
     <>
-      <WidgetHeader className="flex items-center justify-between">
+      <WidgetHeader className="flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-x-2">
           <Button
             onClick={onBack}
             size="icon"
             variant="transparent"
+            className="hover:bg-white/20 transition-colors"
           >
-            <ArrowLeftIcon />
+            <ArrowLeftIcon className="size-5" />
           </Button>
-          <p>Chat</p>
+          <div className="flex flex-col">
+            <p className="font-semibold text-base">Chat</p>
+            <p className="text-xs text-primary-foreground/80">
+              {conversation?.status === "resolved" ? "Resolved" : "Active"}
+            </p>
+          </div>
         </div>
         <Button
           size="icon"
           variant="transparent"
+          className="hover:bg-white/20 transition-colors"
         >
-          <MenuIcon />
+          <MenuIcon className="size-5" />
         </Button>
       </WidgetHeader>
       <AIConversation>
@@ -163,11 +171,24 @@ export const WidgetChatScreen = () => {
               </AIMessage>
             )
           })}
+          {messages.status === "LoadingFirstPage" && (
+            <AIMessage from="assistant">
+              <AIMessageContent>
+                <AIActivityIndicator activity="typing" />
+              </AIMessageContent>
+              <DicebearAvatar
+                imageUrl="/logo.png"
+                seed="assistant"
+                size={32}
+              />
+            </AIMessage>
+          )}
         </AIConversationContent>
+        <AIConversationScrollButton />
       </AIConversation>
       {toUIMessages(messages.results ?? [])?.length === 1 && (
-        <AISuggestions className="flex w-full flex-col items-end p-2">
-          {suggestions.map((suggestion) => {
+        <AISuggestions className="flex w-full flex-col items-end gap-2 p-3 animate-in fade-in-50 slide-in-from-bottom-4 duration-500">
+          {suggestions.map((suggestion, index) => {
             if (!suggestion) {
               return null;
             }
@@ -184,6 +205,8 @@ export const WidgetChatScreen = () => {
                   form.handleSubmit(onSubmit)();
                 }}
                 suggestion={suggestion}
+                className="animate-in fade-in-50 slide-in-from-right-4"
+                style={{ animationDelay: `${index * 100}ms` }}
               />
             )
           })}
@@ -191,7 +214,6 @@ export const WidgetChatScreen = () => {
       )}
       <Form {...form}>
           <AIInput
-            className="rounded-none border-x-0 border-b-0"
             onSubmit={form.handleSubmit(onSubmit)}
           >
             <FormField
@@ -221,7 +243,7 @@ export const WidgetChatScreen = () => {
               <AIInputTools />
               <AIInputSubmit
                 disabled={conversation?.status === "resolved" || !form.formState.isValid}
-                status="ready"
+                status={form.formState.isSubmitting ? "submitted" : "ready"}
                 type="submit"
               />
             </AIInputToolbar>

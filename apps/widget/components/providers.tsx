@@ -10,7 +10,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
       <ConvexProvider client={convex}>
         <Provider>
-          {children}
+          <div className="h-full w-full">
+            {children}
+          </div>
         </Provider>
       </ConvexProvider>
   );

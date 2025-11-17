@@ -9,6 +9,10 @@ interface Props {
 export default function Page( { searchParams }: Props) {
    const { organizationId } =  use(searchParams);
   return (
-    <WidgetView organizationId={organizationId}/>
+    <div className="flex h-full w-full items-center justify-center">
+      <div className="h-full w-full max-w-md">
+        <WidgetView organizationId={organizationId}/>
+      </div>
+    </div>
   )
 }

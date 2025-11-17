@@ -75,14 +75,19 @@ const useAutoResizeTextarea = ({
 
 export type AIInputProps = HTMLAttributes<HTMLFormElement>;
 
-export const AIInput = ({ className, ...props }: AIInputProps) => (
+export const AIInput = ({ className, children, ...props }: AIInputProps) => (
   <form
     className={cn(
-      "w-full divide-y overflow-hidden rounded-md border bg-background",
+      "w-full bg-transparent",
       className
     )}
+    style={{ padding: 0 }}
     {...props}
-  />
+  >
+    <div className="relative flex items-center gap-2 rounded-3xl border border-input bg-transparent! px-3 py-1.5 shadow-sm transition-all focus-within:shadow-md focus-within:ring-1 focus-within:ring-ring/20">
+      {children}
+    </div>
+  </form>
 );
 
 export type AIInputTextareaProps = ComponentProps<typeof Textarea> & {
@@ -94,8 +99,8 @@ export const AIInputTextarea = ({
   onChange,
   className,
   placeholder = "What would you like to know?",
-  minHeight = 48,
-  maxHeight = 164,
+  minHeight = 18,
+  maxHeight = 200,
   ...props
 }: AIInputTextareaProps) => {
   const { textareaRef, adjustHeight } = useAutoResizeTextarea({
@@ -116,12 +121,24 @@ export const AIInputTextarea = ({
   return (
     <Textarea
       className={cn(
-        "text-sm!",
-        "w-full resize-none rounded-none border-none p-3 shadow-none outline-none ring-0",
-        "bg-transparent dark:bg-transparent",
+        "text-sm",
+        "w-full resize-none border-none p-0 shadow-none outline-none ring-0",
+        "bg-transparent! dark:bg-transparent!",
         "focus-visible:ring-0",
+        "placeholder:text-muted-foreground",
+        "self-center",
+        "overflow-hidden",
+        "[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]",
         className
       )}
+      style={{ 
+        lineHeight: '1.25rem',
+        minHeight: '1.25rem',
+        paddingTop: '0',
+        paddingBottom: '0',
+        backgroundColor: 'transparent',
+        overflow: 'hidden'
+      }}
       name="message"
       onChange={(e) => {
         adjustHeight();
@@ -142,7 +159,7 @@ export const AIInputToolbar = ({
   ...props
 }: AIInputToolbarProps) => (
   <div
-    className={cn("flex items-center justify-between p-1", className)}
+    className={cn("flex items-center gap-1.5", className)}
     {...props}
   />
 );
@@ -152,8 +169,7 @@ export type AIInputToolsProps = HTMLAttributes<HTMLDivElement>;
 export const AIInputTools = ({ className, ...props }: AIInputToolsProps) => (
   <div
     className={cn(
-      "flex items-center gap-1",
-      "[&_button:first-child]:rounded-bl-xl",
+      "flex items-center gap-1.5",
       className
     )}
     {...props}
@@ -174,9 +190,9 @@ export const AIInputButton = ({
   return (
     <Button
       className={cn(
-        "shrink-0 gap-1.5 rounded-lg",
-        variant === "ghost" && "text-muted-foreground",
-        newSize === "default" && "px-3",
+        "shrink-0 gap-1.5 rounded-lg h-7 w-7",
+        variant === "ghost" && "text-muted-foreground hover:text-foreground hover:bg-muted",
+        newSize === "default" && "w-auto px-2.5 h-7",
         className
       )}
       size={newSize}
@@ -197,24 +213,38 @@ export const AIInputSubmit = ({
   size = "icon",
   status,
   children,
+  disabled,
   ...props
 }: AIInputSubmitProps) => {
-  let Icon = <SendIcon />;
+  const isSubmitting = status === "submitted";
+  let Icon = <SendIcon className="h-4 w-4" />;
 
   if (status === "submitted") {
-    Icon = <Loader2Icon className="animate-spin" />;
+    Icon = (
+      <Loader2Icon 
+        className="h-4 w-4 animate-spin" 
+        style={{ animationDuration: "0.8s" }} 
+      />
+    );
   } else if (status === "streaming") {
-    Icon = <SquareIcon />;
+    Icon = <SquareIcon className="h-4 w-4" />;
   } else if (status === "error") {
-    Icon = <XIcon />;
+    Icon = <XIcon className="h-4 w-4" />;
   }
 
   return (
     <Button
-      className={cn("gap-1.5 rounded-md rounded-br-lg", className)}
+      className={cn(
+        "gap-1.5 rounded-lg h-7 w-7 shrink-0",
+        "disabled:opacity-50 disabled:cursor-not-allowed",
+        "transition-all duration-200",
+        isSubmitting && "opacity-70",
+        className
+      )}
       size={size}
       type="submit"
       variant={variant}
+      disabled={disabled || isSubmitting}
       {...props}
     >
       {children ?? Icon}

@@ -190,7 +190,7 @@ export const ConversationIdView = ({
         <AIConversationScrollButton />
       </AIConversation>
       
-      <div className="p-2">
+      <div className="bg-transparent p-3 md:p-4">
         <Form {...form}>
           <AIInput onSubmit={form.handleSubmit(onSubmit)}>
             <FormField
@@ -238,10 +238,9 @@ export const ConversationIdView = ({
                 disabled={
                   conversation?.status === "resolved" ||
                   !form.formState.isValid ||
-                  form.formState.isSubmitting ||
                   isEnhancing
                 }
-                status="ready"
+                status={form.formState.isSubmitting ? "submitted" : "ready"}
                 type="submit"
               />
             </AIInputToolbar>
@@ -283,13 +282,14 @@ export const ConversationIdViewLoading = () => {
         </AIConversationContent>
       </AIConversation>
 
-      <div className="p-2">
+      <div>
         <AIInput>
           <AIInputTextarea
             disabled
+            className="bg-transparent"
             placeholder="Type your response as an operator..."
           />
-          <AIInputToolbar>
+          <AIInputToolbar className="bg-transparent">
             <AIInputTools />
             <AIInputSubmit disabled status="ready" />
           </AIInputToolbar>

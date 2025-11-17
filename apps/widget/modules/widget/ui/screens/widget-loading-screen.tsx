@@ -162,21 +162,40 @@ export const WidgetLoadingScreen = ({ organizationId }: { organizationId: string
 
   return (
     <>
-      <WidgetHeader>
-        <div className="flex flex-col justify-between gap-y-2 px-2 py-6 font-semibold">
+      <WidgetHeader className="shadow-sm">
+        <div className="flex flex-col justify-between gap-y-2 px-2 py-6 font-semibold animate-in fade-in-50 duration-500">
           <p className="text-3xl">
             Hi there! 👋
           </p>
-          <p className="text-lg">
+          <p className="text-lg text-primary-foreground/90">
             Let&apos;s get you started
           </p>
         </div>
       </WidgetHeader>
-      <div className="flex flex-1 flex-col items-center justify-center gap-y-4 p-4 text-muted-foreground">
-        <LoaderIcon className="animate-spin" />
-        <p className="text-sm">
-         {loadingMessage || "Loading..."}
-        </p>
+      <div className="flex flex-1 flex-col items-center justify-center gap-y-4 p-4 text-muted-foreground animate-in fade-in-50 slide-in-from-bottom-4 duration-500">
+        <div className="relative">
+          <div className="absolute inset-0 rounded-full bg-primary/20 blur-xl animate-pulse" />
+          <LoaderIcon className="relative size-12 animate-spin text-primary" />
+        </div>
+        <div className="flex flex-col items-center gap-2">
+          <p className="text-sm font-medium">
+            {loadingMessage || "Loading..."}
+          </p>
+          <div className="flex gap-1">
+            <span 
+              className="size-2 animate-bounce rounded-full bg-primary"
+              style={{ animationDelay: "0ms", animationDuration: "1.4s" }}
+            />
+            <span 
+              className="size-2 animate-bounce rounded-full bg-primary"
+              style={{ animationDelay: "200ms", animationDuration: "1.4s" }}
+            />
+            <span 
+              className="size-2 animate-bounce rounded-full bg-primary"
+              style={{ animationDelay: "400ms", animationDuration: "1.4s" }}
+            />
+          </div>
+        </div>
       </div>
     </>
   );

@@ -1,12 +1,13 @@
 "use client";
 
-import { Loader2Icon, SendIcon, SquareIcon, XIcon } from "lucide-react";
+import { ImageIcon, Loader2Icon, SendIcon, SquareIcon, XIcon } from "lucide-react";
 import type {
   ComponentProps,
   HTMLAttributes,
   KeyboardEventHandler,
+  DragEventHandler,
 } from "react";
-import { Children, useCallback, useEffect, useRef } from "react";
+import React, { Children, useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@workspace/ui/components/button";
 import {
   Select,
@@ -269,7 +270,7 @@ export const AIInputModelSelectTrigger = ({
   <SelectTrigger
     className={cn(
       "border-none bg-transparent font-medium text-muted-foreground shadow-none transition-colors",
-      'hover:bg-accent hover:text-foreground [&[aria-expanded="true"]]:bg-accent [&[aria-expanded="true"]]:text-foreground',
+      "hover:bg-accent hover:text-foreground aria-expanded:bg-accent aria-expanded:text-foreground",
       className
     )}
     {...props}
@@ -304,3 +305,129 @@ export const AIInputModelSelectValue = ({
 }: AIInputModelSelectValueProps) => (
   <SelectValue className={cn(className)} {...props} />
 );
+
+export type AIInputImageButtonProps = ComponentProps<typeof Button> & {
+  onImageSelect: (files: File[]) => void;
+  disabled?: boolean;
+  accept?: string;
+  multiple?: boolean;
+};
+
+export const AIInputImageButton = ({
+  onImageSelect,
+  disabled,
+  accept = "image/*",
+  multiple = true,
+  className,
+  ...props
+}: AIInputImageButtonProps) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) {
+      onImageSelect(files);
+    }
+    // Reset input so same file can be selected again
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  return (
+    <>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept={accept}
+        multiple={multiple}
+        onChange={handleFileChange}
+        className="hidden"
+        disabled={disabled}
+      />
+      <AIInputButton
+        type="button"
+        onClick={handleClick}
+        disabled={disabled}
+        className={className}
+        {...props}
+      >
+        <ImageIcon className="h-4 w-4" />
+      </AIInputButton>
+    </>
+  );
+};
+
+export type AIInputWithDragDropProps = AIInputProps & {
+  onImageDrop?: (files: File[]) => void;
+  dragDropEnabled?: boolean;
+};
+
+export const AIInputWithDragDrop = ({
+  onImageDrop,
+  dragDropEnabled = true,
+  className,
+  children,
+  ...props
+}: AIInputWithDragDropProps) => {
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleDragEnter: DragEventHandler<HTMLFormElement> = (e) => {
+    if (!dragDropEnabled || !onImageDrop) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave: DragEventHandler<HTMLFormElement> = (e) => {
+    if (!dragDropEnabled || !onImageDrop) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDragOver: DragEventHandler<HTMLFormElement> = (e) => {
+    if (!dragDropEnabled || !onImageDrop) return;
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop: DragEventHandler<HTMLFormElement> = (e) => {
+    if (!dragDropEnabled || !onImageDrop) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = Array.from(e.dataTransfer.files).filter((file) =>
+      file.type.startsWith("image/")
+    );
+
+    if (files.length > 0) {
+      onImageDrop(files);
+    }
+  };
+
+  return (
+    <form
+      className={cn(
+        "w-full bg-transparent",
+        isDragging && "ring-2 ring-primary ring-offset-2",
+        className
+      )}
+      style={{ padding: 0 }}
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+      {...props}
+    >
+      <div className="relative flex items-center gap-2 rounded-3xl border border-input bg-transparent! px-3 py-1.5 shadow-sm transition-all focus-within:shadow-md focus-within:ring-1 focus-within:ring-ring/20">
+        {children}
+      </div>
+    </form>
+  );
+};

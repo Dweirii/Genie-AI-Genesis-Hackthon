@@ -16,11 +16,18 @@ import {
 import {
   AIInput,
   AIInputButton,
+  AIInputImageButton,
   AIInputSubmit,
   AIInputTextarea,
   AIInputToolbar,
   AIInputTools,
+  AIInputWithDragDrop,
 } from "@workspace/ui/components/ai/input";
+import { ImagePreview } from "@workspace/ui/components/ai/image-preview";
+import { ImageDisplay } from "@workspace/ui/components/ai/image-display";
+import { useImageUpload } from "@workspace/ui/hooks/use-image-upload";
+import { parseMessageContent } from "@workspace/ui/lib/message-content";
+import { Id } from "@workspace/backend/_generated/dataModel";
 import {
   AIMessage,
   AIMessageContent,
@@ -38,7 +45,7 @@ import { Skeleton } from "@workspace/ui/components/skeleton";
 import { toast } from "sonner";
 
 const formSchema = z.object({
-  message: z.string().min(1, "Message is required"),
+  message: z.string(),
 });
 
 export const ConversationIdView = ({
@@ -92,17 +99,63 @@ export const ConversationIdView = ({
     }
   }
 
+  const {
+    selectedImages,
+    previewUrls,
+    errors: imageErrors,
+    addImages,
+    removeImage,
+    clearImages,
+    canAddMore,
+  } = useImageUpload();
+
+  const generateUploadUrl = useAction(api.private.files.generateUploadUrl);
+  const uploadImage = useAction(api.private.files.uploadImage);
   const createMessage = useMutation(api.private.messages.create);
+
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    // Validate that we have either text or images
+    if (!values.message.trim() && selectedImages.length === 0) {
+      return;
+    }
+
     try {
+      // Upload images first
+      const imageStorageIds: Id<"_storage">[] = [];
+      
+      if (selectedImages.length > 0) {
+        try {
+          for (const image of selectedImages) {
+            const uploadUrl = await generateUploadUrl();
+            const response = await fetch(uploadUrl, {
+              method: "POST",
+              headers: { "Content-Type": image.type },
+              body: image,
+            });
+            const { storageId } = await response.json();
+            
+            // Validate the uploaded image
+            const uploadResult = await uploadImage({ storageId });
+            imageStorageIds.push(uploadResult.storageId);
+          }
+        } catch (error) {
+          console.error("Failed to upload images:", error);
+          toast.error("Failed to upload images");
+          return;
+        }
+      }
+
       await createMessage({
         conversationId,
-        prompt: values.message,
+        prompt: values.message.trim() || "", // Allow empty if images present
+        imageStorageIds: imageStorageIds.length > 0 ? imageStorageIds : undefined,
       });
 
       form.reset();
+      clearImages();
     } catch (error) {
       console.error(error);
+      toast.error("Failed to send message");
     }
   };
 
@@ -167,32 +220,52 @@ export const ConversationIdView = ({
             onLoadMore={handleLoadMore}
             ref={topElementRef}
           />
-          {toUIMessages(messages.results ?? [])?.map((message) => (
-            <AIMessage
-            // In reverse, because we are watching from "assistant" prespective
-              from={message.role === "user" ? "assistant" : "user"}
-              key={message.id}
-            >
-              <AIMessageContent>
-                <AIResponse>
-                  {message.content}
-                </AIResponse>
-              </AIMessageContent>
-              {message.role === "user" && (
-                <DicebearAvatar
-                  seed={conversation?.contactSessionId ?? "user"}
-                  size={32}
-                />
-              )}
-            </AIMessage>
-          ))}
+          {toUIMessages(messages.results ?? [])?.map((message) => {
+            const parsedContent = parseMessageContent(message.content);
+            return (
+              <AIMessage
+              // In reverse, because we are watching from "assistant" prespective
+                from={message.role === "user" ? "assistant" : "user"}
+                key={message.id}
+              >
+                <AIMessageContent>
+                  {parsedContent.images.length > 0 && (
+                    <ImageDisplay imageUrls={parsedContent.images} />
+                  )}
+                  {parsedContent.text && (
+                    <AIResponse>
+                      {parsedContent.text}
+                    </AIResponse>
+                  )}
+                </AIMessageContent>
+                {message.role === "user" && (
+                  <DicebearAvatar
+                    seed={conversation?.contactSessionId ?? "user"}
+                    size={32}
+                  />
+                )}
+              </AIMessage>
+            );
+          })}
         </AIConversationContent>
         <AIConversationScrollButton />
       </AIConversation>
       
       <div className="bg-transparent p-3 md:p-4">
         <Form {...form}>
-          <AIInput onSubmit={form.handleSubmit(onSubmit)}>
+          <AIInputWithDragDrop
+            onSubmit={form.handleSubmit(onSubmit)}
+            onImageDrop={addImages}
+            dragDropEnabled={conversation?.status !== "resolved" && canAddMore}
+          >
+            {(selectedImages.length > 0 || imageErrors.length > 0) && (
+              <ImagePreview
+                images={selectedImages}
+                previewUrls={previewUrls}
+                onRemove={removeImage}
+                errors={imageErrors}
+              />
+            )}
             <FormField
               control={form.control}
               disabled={conversation?.status === "resolved"}
@@ -222,6 +295,15 @@ export const ConversationIdView = ({
             />
             <AIInputToolbar>
               <AIInputTools>
+                <AIInputImageButton
+                  onImageSelect={addImages}
+                  disabled={
+                    conversation?.status === "resolved" ||
+                    !canAddMore ||
+                    form.formState.isSubmitting ||
+                    isEnhancing
+                  }
+                />
                 <AIInputButton
                   onClick={handleEnhanceResponse}
                   disabled={
@@ -237,14 +319,15 @@ export const ConversationIdView = ({
               <AIInputSubmit
                 disabled={
                   conversation?.status === "resolved" ||
-                  !form.formState.isValid ||
-                  isEnhancing
+                  (form.getValues("message").trim().length === 0 && selectedImages.length === 0) ||
+                  isEnhancing ||
+                  form.formState.isSubmitting
                 }
                 status={form.formState.isSubmitting ? "submitted" : "ready"}
                 type="submit"
               />
             </AIInputToolbar>
-          </AIInput>
+          </AIInputWithDragDrop>
         </Form>
       </div>
     </div>

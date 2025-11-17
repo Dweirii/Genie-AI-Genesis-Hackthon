@@ -23,11 +23,18 @@ import {
 } from "@workspace/ui/components/ai/conversation";
 import {
   AIInput,
+  AIInputImageButton,
   AIInputSubmit,
   AIInputTextarea,
   AIInputToolbar,
   AIInputTools,
+  AIInputWithDragDrop,
 } from "@workspace/ui/components/ai/input";
+import { ImagePreview } from "@workspace/ui/components/ai/image-preview";
+import { ImageDisplay } from "@workspace/ui/components/ai/image-display";
+import { useImageUpload } from "@workspace/ui/hooks/use-image-upload";
+import { parseMessageContent } from "@workspace/ui/lib/message-content";
+import { Id } from "@workspace/backend/_generated/dataModel";
 import {
   AIMessage,
   AIMessageContent,
@@ -37,7 +44,7 @@ import { AIActivityIndicator } from "@workspace/ui/components/ai/activity-indica
 import { useMemo } from "react";
 
 const formSchema = z.object({
-  message: z.string().min(1, "Message is required"),
+  message: z.string(),
 });
 
 export const WidgetChatScreen = () => {
@@ -102,18 +109,63 @@ export const WidgetChatScreen = () => {
     },
   });
 
+  const {
+    selectedImages,
+    previewUrls,
+    errors: imageErrors,
+    addImages,
+    removeImage,
+    clearImages,
+    canAddMore,
+  } = useImageUpload();
+
+  const generateUploadUrl = useAction(api.public.files.generateUploadUrl);
+  const uploadImage = useAction(api.public.files.uploadImage);
   const createMessage = useAction(api.public.messages.create);
+
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (!conversation || !contactSessionId) {
       return;
     }
 
+    // Validate that we have either text or images
+    if (!values.message.trim() && selectedImages.length === 0) {
+      return;
+    }
+
+    // Upload images first
+    const imageStorageIds: Id<"_storage">[] = [];
+    
+    if (selectedImages.length > 0) {
+      try {
+        for (const image of selectedImages) {
+          const uploadUrl = await generateUploadUrl();
+          const response = await fetch(uploadUrl, {
+            method: "POST",
+            headers: { "Content-Type": image.type },
+            body: image,
+          });
+          const { storageId } = await response.json();
+          
+          // Validate the uploaded image
+          const uploadResult = await uploadImage({ storageId });
+          imageStorageIds.push(uploadResult.storageId);
+        }
+      } catch (error) {
+        console.error("Failed to upload images:", error);
+        // Error will be shown via imageErrors in ImagePreview
+        return;
+      }
+    }
+
     form.reset();
+    clearImages();
 
     await createMessage({
       threadId: conversation.threadId,
-      prompt: values.message,
+      prompt: values.message.trim() || "", // Allow empty if images present
       contactSessionId,
+      imageStorageIds: imageStorageIds.length > 0 ? imageStorageIds : undefined,
     });
   };
 
@@ -153,13 +205,19 @@ export const WidgetChatScreen = () => {
             ref={topElementRef}
           />
           {toUIMessages(messages.results ?? [])?.map((message) => {
+            const parsedContent = parseMessageContent(message.content);
             return (
               <AIMessage
                 from={message.role === "user" ? "user" : "assistant"}
                 key={message.id}
               >
                 <AIMessageContent>
-                  <AIResponse>{message.content}</AIResponse>
+                  {parsedContent.images.length > 0 && (
+                    <ImageDisplay imageUrls={parsedContent.images} />
+                  )}
+                  {parsedContent.text && (
+                    <AIResponse>{parsedContent.text}</AIResponse>
+                  )}
                 </AIMessageContent>
                 {message.role === "assistant" && (
                   <DicebearAvatar
@@ -213,9 +271,19 @@ export const WidgetChatScreen = () => {
         </AISuggestions>
       )}
       <Form {...form}>
-          <AIInput
+          <AIInputWithDragDrop
             onSubmit={form.handleSubmit(onSubmit)}
+            onImageDrop={addImages}
+            dragDropEnabled={conversation?.status !== "resolved" && canAddMore}
           >
+            {(selectedImages.length > 0 || imageErrors.length > 0) && (
+              <ImagePreview
+                images={selectedImages}
+                previewUrls={previewUrls}
+                onRemove={removeImage}
+                errors={imageErrors}
+              />
+            )}
             <FormField
               control={form.control}
               disabled={conversation?.status === "resolved"}
@@ -240,14 +308,27 @@ export const WidgetChatScreen = () => {
               )}
             />
             <AIInputToolbar>
-              <AIInputTools />
+              <AIInputTools>
+                <AIInputImageButton
+                  onImageSelect={addImages}
+                  disabled={
+                    conversation?.status === "resolved" ||
+                    !canAddMore ||
+                    form.formState.isSubmitting
+                  }
+                />
+              </AIInputTools>
               <AIInputSubmit
-                disabled={conversation?.status === "resolved" || !form.formState.isValid}
+                disabled={
+                  conversation?.status === "resolved" ||
+                  (form.getValues("message").trim().length === 0 && selectedImages.length === 0) ||
+                  form.formState.isSubmitting
+                }
                 status={form.formState.isSubmitting ? "submitted" : "ready"}
                 type="submit"
               />
             </AIInputToolbar>
-          </AIInput>
+          </AIInputWithDragDrop>
       </Form>
     </>
   );

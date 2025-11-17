@@ -25,6 +25,7 @@ export default function RootLayout({
       </head>
       <body
         className={`${fontSans.variable} ${fontMono.variable} h-full font-sans antialiased touch-manipulation`}
+        suppressHydrationWarning
       >
         <Providers>{children}</Providers>
       </body>

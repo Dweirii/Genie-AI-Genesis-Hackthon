@@ -67,6 +67,7 @@ export const create = mutation({
   args: {
     prompt: v.string(),
     conversationId: v.id("conversations"),
+    imageStorageIds: v.optional(v.array(v.id("_storage"))),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -116,13 +117,47 @@ export const create = mutation({
       });
     }
 
+    // Build multimodal content array
+    const contentParts: Array<{ type: "text"; text: string } | { type: "image"; image: URL }> = [];
+    
+    // Add text if provided
+    if (args.prompt.trim()) {
+      contentParts.push({ type: "text", text: args.prompt });
+    }
+
+    // Add images if provided
+    if (args.imageStorageIds && args.imageStorageIds.length > 0) {
+      for (const storageId of args.imageStorageIds) {
+        const imageUrl = await ctx.storage.getUrl(storageId);
+        if (imageUrl) {
+          // Store image URL as string for proper serialization
+          contentParts.push({ type: "image", image: imageUrl } as any);
+        }
+      }
+    }
+
+    // Ensure we have at least text or images
+    if (contentParts.length === 0) {
+      throw new ConvexError({
+        code: "BAD_REQUEST",
+        message: "Message must contain text or images",
+      });
+    }
+
+    // Always use array format if we have images, even if there's also text
+    // This ensures images are properly stored in the message
+    const hasImages = contentParts.some(part => part.type === "image");
+    const messageContent = hasImages 
+      ? (contentParts as any)
+      : (contentParts[0].type === "text" ? contentParts[0].text : contentParts as any);
+
     await saveMessage(ctx, components.agent, {
       threadId: conversation.threadId,
       // TODO: Check if "agentName" is needed or not
       agentName: identity.familyName,
       message: {
         role: "assistant",
-        content: args.prompt,
+        content: messageContent as any, // Type assertion for multimodal support
       },
     });
   },

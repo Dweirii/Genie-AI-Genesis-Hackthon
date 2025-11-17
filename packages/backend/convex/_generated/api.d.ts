@@ -23,6 +23,7 @@ import type * as private_vapi from "../private/vapi.js";
 import type * as private_widgetSettings from "../private/widgetSettings.js";
 import type * as public_contactSessions from "../public/contactSessions.js";
 import type * as public_conversations from "../public/conversations.js";
+import type * as public_files from "../public/files.js";
 import type * as public_messages from "../public/messages.js";
 import type * as public_organizations from "../public/organizations.js";
 import type * as public_secrets from "../public/secrets.js";
@@ -37,6 +38,7 @@ import type * as system_contactSessions from "../system/contactSessions.js";
 import type * as system_conversations from "../system/conversations.js";
 import type * as system_plugins from "../system/plugins.js";
 import type * as system_secrets from "../system/secrets.js";
+import type * as system_storage from "../system/storage.js";
 import type * as system_subscriptions from "../system/subscriptions.js";
 import type * as users from "../users.js";
 
@@ -70,6 +72,7 @@ declare const fullApi: ApiFromModules<{
   "private/widgetSettings": typeof private_widgetSettings;
   "public/contactSessions": typeof public_contactSessions;
   "public/conversations": typeof public_conversations;
+  "public/files": typeof public_files;
   "public/messages": typeof public_messages;
   "public/organizations": typeof public_organizations;
   "public/secrets": typeof public_secrets;
@@ -84,6 +87,7 @@ declare const fullApi: ApiFromModules<{
   "system/conversations": typeof system_conversations;
   "system/plugins": typeof system_plugins;
   "system/secrets": typeof system_secrets;
+  "system/storage": typeof system_storage;
   "system/subscriptions": typeof system_subscriptions;
   users: typeof users;
 }>;

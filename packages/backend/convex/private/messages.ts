@@ -147,9 +147,15 @@ export const create = mutation({
     // Always use array format if we have images, even if there's also text
     // This ensures images are properly stored in the message
     const hasImages = contentParts.some(part => part.type === "image");
-    const messageContent = hasImages 
+    const firstContentPart = contentParts[0];
+
+    const messageContent = hasImages
       ? (contentParts as any)
-      : (contentParts[0].type === "text" ? contentParts[0].text : contentParts as any);
+      : (
+        firstContentPart && firstContentPart.type === "text"
+          ? firstContentPart.text
+          : (contentParts as any)
+      );
 
     await saveMessage(ctx, components.agent, {
       threadId: conversation.threadId,

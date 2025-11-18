@@ -27,7 +27,6 @@ import { ImagePreview } from "@workspace/ui/components/ai/image-preview";
 import { ImageDisplay } from "@workspace/ui/components/ai/image-display";
 import { useImageUpload } from "@workspace/ui/hooks/use-image-upload";
 import { parseMessageContent } from "@workspace/ui/lib/message-content";
-import { Id } from "@workspace/backend/_generated/dataModel";
 import {
   AIMessage,
   AIMessageContent,
@@ -243,7 +242,7 @@ export const ConversationIdView = ({
                     </AIResponse>
                   )}
                 </AIMessageContent>
-                {message.role === "user" && (
+                {uiMessage.role === "user" && (
                   <DicebearAvatar
                     seed={conversation?.contactSessionId ?? "user"}
                     size={32}

@@ -88,9 +88,10 @@ export const create = action({
 
     // Determine message content format
     const hasImages = contentParts.some(part => part.type === "image");
+    const firstContentPart = contentParts[0];
     const messageContent = hasImages 
       ? contentParts
-      : (contentParts[0].type === "text" ? contentParts[0].text : contentParts);
+      : (firstContentPart && firstContentPart.type === "text" ? firstContentPart.text : contentParts);
 
     const shouldTriggerAgent =
       conversation.status === "unresolved" && subscription?.status === "active"

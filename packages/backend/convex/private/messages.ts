@@ -213,6 +213,8 @@ export const getMany = query({
     const paginated = await supportAgent.listMessages(ctx, {
       threadId: args.threadId,
       paginationOpts: args.paginationOpts,
+      // Don't filter by status - let the UI handle filtering empty/incomplete messages
+      // This allows messages to appear as soon as they're created, not just when marked "success"
     });
 
     // Refresh image URLs for messages with images

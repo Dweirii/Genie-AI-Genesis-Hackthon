@@ -55,14 +55,8 @@ export const search = createTool({
       model: google.chat("gemini-2.0-flash-exp"),
     });
 
-    await supportAgent.saveMessage(ctx, {
-      threadId: ctx.threadId,
-      message: {
-        role: "assistant",
-        content: response.text,
-      },
-    });
-
+    // Return the text directly - let the agent framework handle message saving
+    // This prevents race conditions where messages are saved twice
     return response.text;
   },
 });

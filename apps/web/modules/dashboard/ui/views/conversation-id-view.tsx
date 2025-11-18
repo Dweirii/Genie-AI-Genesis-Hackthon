@@ -219,8 +219,11 @@ export const ConversationIdView = ({
             onLoadMore={handleLoadMore}
             ref={topElementRef}
           />
-          {toUIMessages(messages.results ?? [])?.map((uiMessage, index) => {
-            const rawMessage = messages.results?.[index];
+          {toUIMessages(messages.results ?? [])?.map((uiMessage) => {
+            // Match by message ID, not by index, to avoid misalignment
+            const rawMessage = messages.results?.find(
+              (msg) => msg.id === uiMessage.id || msg._id === uiMessage.id
+            );
             const messageContent =
               rawMessage?.message?.content ??
               (rawMessage?.message as string | undefined) ??

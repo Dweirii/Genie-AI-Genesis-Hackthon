@@ -8,6 +8,9 @@ import { resolveConversation } from "../system/ai/tools/resolveConversation";
 import { saveMessage } from "@convex-dev/agent";
 import { search } from "../system/ai/tools/search";
 
+/**
+ * Create a new user message (text and/or images) and optionally trigger the AI agent.
+ */
 export const create = action({
   args: {
     prompt: v.string(),
@@ -16,6 +19,7 @@ export const create = action({
     imageStorageIds: v.optional(v.array(v.id("_storage"))),
   },
   handler: async (ctx, args) => {
+    // 1) Validate contact session
     const contactSession = await ctx.runQuery(
       internal.system.contactSessions.getOne,
       {
@@ -30,11 +34,12 @@ export const create = action({
       });
     }
 
+    // 2) Load conversation
     const conversation = await ctx.runQuery(
       internal.system.conversations.getByThreadId,
       {
         threadId: args.threadId,
-      },
+      }
     );
 
     if (!conversation) {
@@ -51,34 +56,44 @@ export const create = action({
       });
     }
 
+    // 3) Refresh session (keep it alive while user is active)
     await ctx.runMutation(internal.system.contactSessions.refresh, {
       contactSessionId: args.contactSessionId,
     });
 
+    // 4) Check subscription
     const subscription = await ctx.runQuery(
       internal.system.subscriptions.getByOrganizationId,
       {
         organizationId: conversation.organizationId,
-      },
+      }
     );
 
-  
-    const contentParts: Array<{ type: "text"; text: string } | { type: "image"; image: URL }> = [];
-    
-    if (args.prompt.trim()) {
-      contentParts.push({ type: "text", text: args.prompt });
+    const shouldTriggerAgent =
+      conversation.status === "unresolved" &&
+      subscription?.status === "active";
+
+    // 5) Build content (text + images)
+    const contentParts: Array<
+      { type: "text"; text: string } | { type: "image"; image: string }
+    > = [];
+
+    const trimmedPrompt = args.prompt.trim();
+    if (trimmedPrompt) {
+      contentParts.push({ type: "text", text: trimmedPrompt });
     }
 
     if (args.imageStorageIds && args.imageStorageIds.length > 0) {
       for (const storageId of args.imageStorageIds) {
         const imageUrl = await ctx.storage.getUrl(storageId);
         if (imageUrl) {
-          contentParts.push({ type: "image", image: new URL(imageUrl) });
+          // Store as string; we'll extract storageId again later when refreshing URLs
+          contentParts.push({ type: "image", image: imageUrl });
         }
       }
     }
 
-    // Ensure we have at least text or images
+    // Ensure message is not empty
     if (contentParts.length === 0) {
       throw new ConvexError({
         code: "BAD_REQUEST",
@@ -86,28 +101,21 @@ export const create = action({
       });
     }
 
-    // Determine message content format
-    const hasImages = contentParts.some(part => part.type === "image");
-    const firstContentPart = contentParts[0];
-    const messageContent = hasImages 
-      ? contentParts
-      : (firstContentPart && firstContentPart.type === "text" ? firstContentPart.text : contentParts);
+    const hasImages = contentParts.some((part) => part.type === "image");
 
-    const shouldTriggerAgent =
-      conversation.status === "unresolved" && subscription?.status === "active"
+    const buildUserMessage = () => ({
+      role: "user" as const,
+      content: contentParts as any,
+    });
 
+    // 6) With active agent: persist the user message first so UI updates immediately,
+    // then trigger the agent using promptMessageId for consistent context.
     if (shouldTriggerAgent) {
-      // Always save the user message explicitly first to ensure it's in the database
-      // with the correct format before the AI response is generated
       const savedMessage = await saveMessage(ctx, components.agent, {
         threadId: args.threadId,
-        message: {
-          role: "user",
-          content: messageContent as any,
-        },
+        message: buildUserMessage(),
       });
 
-      // Use promptMessageId to avoid duplicate message creation
       await supportAgent.generateText(
         ctx,
         { threadId: args.threadId },
@@ -117,21 +125,36 @@ export const create = action({
             escalateConversationTool: escalateConversation,
             resolveConversationTool: resolveConversation,
             searchTool: search,
-          }
-        },
-      )
+          },
+        }
+      );
     } else {
-      await saveMessage(ctx, components.agent, {
-        threadId: args.threadId,
-        message: {
-          role: "user",
-          content: messageContent as any,
-        },
-      });
+      // 7) No active AI agent → just persist the user message
+
+      if (hasImages) {
+        // Text + images or images only → store as structured message
+        await saveMessage(ctx, components.agent, {
+          threadId: args.threadId,
+          message: {
+            role: "user",
+            content: contentParts as any,
+          },
+        });
+      } else {
+        // Text only → store as structured content for consistency
+        await saveMessage(ctx, components.agent, {
+          threadId: args.threadId,
+          message: buildUserMessage(),
+        });
+      }
     }
   },
 });
 
+/**
+ * Get a paginated list of messages for a thread, refreshing image URLs
+ * so that old signed URLs don't break the UI.
+ */
 export const getMany = query({
   args: {
     threadId: v.string(),
@@ -151,16 +174,26 @@ export const getMany = query({
     const paginated = await supportAgent.listMessages(ctx, {
       threadId: args.threadId,
       paginationOpts: args.paginationOpts,
+      // Don't filter by status - let the UI handle filtering empty/incomplete messages
+      // This allows messages to appear as soon as they're created, not just when marked "success"
     });
 
+    // Refresh any image URLs in paginated messages
     const messagesWithFreshUrls = await Promise.all(
       paginated.page.map(async (message: any) => {
         if (message.message && Array.isArray(message.message.content)) {
           const refreshedContent = await Promise.all(
             message.message.content.map(async (part: any) => {
               if (part.type === "image" && part.image) {
-                const imageUrl = typeof part.image === "string" ? part.image : part.image.toString();
-                const storageIdMatch = imageUrl.match(/\/api\/storage\/([^/?]+)/);
+                const imageUrl =
+                  typeof part.image === "string"
+                    ? part.image
+                    : part.image.toString();
+
+                // Expect URLs like: https://.../api/storage/<storageId>?token=...
+                const storageIdMatch = imageUrl.match(
+                  /\/api\/storage\/([^/?]+)/
+                );
                 if (storageIdMatch) {
                   try {
                     const storageId = storageIdMatch[1] as any;
@@ -169,20 +202,23 @@ export const getMany = query({
                       return { ...part, image: freshUrl };
                     }
                   } catch {
+                    // Swallow errors here: if refreshing URL fails, we just return original part
                   }
                 }
               }
               return part;
             })
           );
-          return { 
-            ...message, 
+
+          return {
+            ...message,
             message: {
               ...message.message,
-              content: refreshedContent 
-            }
+              content: refreshedContent,
+            },
           };
         }
+
         return message;
       })
     );

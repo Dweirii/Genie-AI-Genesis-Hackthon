@@ -97,42 +97,29 @@ export const create = action({
       conversation.status === "unresolved" && subscription?.status === "active"
 
     if (shouldTriggerAgent) {
-      if (hasImages) {
-        const savedMessage = await saveMessage(ctx, components.agent, {
-          threadId: args.threadId,
-          message: {
-            role: "user",
-            content: messageContent as any,
-          },
-        });
+      // Always save the user message explicitly first to ensure it's in the database
+      // with the correct format before the AI response is generated
+      const savedMessage = await saveMessage(ctx, components.agent, {
+        threadId: args.threadId,
+        message: {
+          role: "user",
+          content: messageContent as any,
+        },
+      });
 
-        await supportAgent.generateText(
-          ctx,
-          { threadId: args.threadId },
-          {
-            promptMessageId: savedMessage.messageId,
-            tools: {
-              escalateConversationTool: escalateConversation,
-              resolveConversationTool: resolveConversation,
-              searchTool: search,
-            }
-          },
-        )
-      } else {
-        // Only text - let generateText save it (avoids duplicate)
-        await supportAgent.generateText(
-          ctx,
-          { threadId: args.threadId },
-          {
-            prompt: args.prompt.trim(),
-            tools: {
-              escalateConversationTool: escalateConversation,
-              resolveConversationTool: resolveConversation,
-              searchTool: search,
-            }
-          },
-        )
-      }
+      // Use promptMessageId to avoid duplicate message creation
+      await supportAgent.generateText(
+        ctx,
+        { threadId: args.threadId },
+        {
+          promptMessageId: savedMessage.messageId,
+          tools: {
+            escalateConversationTool: escalateConversation,
+            resolveConversationTool: resolveConversation,
+            searchTool: search,
+          }
+        },
+      )
     } else {
       await saveMessage(ctx, components.agent, {
         threadId: args.threadId,

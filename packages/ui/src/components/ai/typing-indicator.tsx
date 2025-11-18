@@ -32,3 +32,4 @@ export const TypingIndicator = ({ className, ...props }: TypingIndicatorProps) =
 TypingIndicator.displayName = "TypingIndicator";
 
 
+

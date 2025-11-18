@@ -144,8 +144,6 @@ export const create = mutation({
       });
     }
 
-    // Always use array format if we have images, even if there's also text
-    // This ensures images are properly stored in the message
     const hasImages = contentParts.some(part => part.type === "image");
     const firstContentPart = contentParts[0];
 
